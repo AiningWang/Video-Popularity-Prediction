@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from scipy.optimize import leastsq
+from loadInfo import AllVideoInfo
 
 """
     @refer_d: the popularity before refer_d is known
@@ -48,9 +49,7 @@ class Data:
         i = 0
         for line in file:
             i += 1
-            series = line.strip("\n").split("\t")[1:]
-            for j in range(len(series)):
-                series[j] = int(series[j])
+            series = map(int, line.strip("\n").split("\t")[1:])
             if i % 4 != 0:
                 self.trainx.append(series[: refer_d])
                 self.trainy.append(sum(series[: target_d]))
@@ -58,6 +57,36 @@ class Data:
                 self.testx.append(series[: refer_d])
                 self.testy.append(sum(series[: target_d]))
         file.close()
+        """
+            if N(target_d) == 0, delete this video
+        """
+        k = len(self.testy)
+        for i in range(k):
+            if self.testy[k - i - 1] == 0:
+                del self.testy[k - i - 1]
+                del self.testx[k - i - 1]
+        k = len(self.trainy)
+        for i in range(k):
+            if self.trainy[k - i - 1] == 0:
+                del self.trainy[k - i - 1]
+                del self.trainx[k - i - 1]
+        self.num_of_test = len(self.testy)
+        self.num_of_train = len(self.trainy)
+
+
+    def load2(self, info_dict, refer_d, target_d):
+        """
+            load the data from class AllVideoInfo
+        """
+        i = 0
+        for vid in info_dict:
+            i += 1
+            if i % 4 != 0:
+                self.trainx.append(info_dict[vid].pop[: refer_d])
+                self.trainy.append(sum(info_dict[vid].pop[: target_d]))
+            else:
+                self.testx.append(info_dict[vid].pop[: refer_d])
+                self.testy.append(sum(info_dict[vid].pop[: target_d]))
         """
             if N(target_d) == 0, delete this video
         """
