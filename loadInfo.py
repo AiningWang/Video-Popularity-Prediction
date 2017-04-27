@@ -10,44 +10,50 @@ FILE2 = "new_upload_sampling10_14.txt"
 POP_LEN = 23
 
 
+from pyltp import Segmentor, Postagger, NamedEntityRecognizer
+
+
 class OneVideoInfo():
     """
         including vid, popularity, title, duration, type
     """
+   
     def __init__(self, vid):
-        self.vid     = vid
-        self.pop    = []
-        self.title  = ""
-        self.duration = 0
-        self.type   = ""
+        self.vid        = vid
+        self.pop        = []
+        self.title      = ""
+        self.duration   = 0
+        self.type       = ""
+        self.title_named_entity = 0
+
+
+    def namedEntityCounter(self, segmentor, postagger, recognizer):
+        """
+            count named entity in title
+        """
+        self.title_named_entity = 0
+        try:
+            words   = segmentor.segment(self.title)
+            postags = postagger.postag(words)
+            netags  = recognizer.recognize(words, postags)
+        except:
+            self.title_named_entity = 0
+        else:
+            for i in range(len(netags)):
+                if netags[i] != "O":
+                    self.title_named_entity += 1
 
 
 
 class AllVideoInfo():
     """
         Load all video info
+        @self.video_info[vid] = OneVideoInfo()
     """
     def __init__(self):
-        self.num_of_video = 0
-        self.video_info = {}
-        self.mean_pop   = []
-
-
-    def Info(self, vid, title, duration, type):
-        self.num_of_video += 1
-        self.video_info[vid]        = OneVideoInfo(vid)
-        self.video_info[vid].title  = title
-        self.video_info[vid].duration = duration
-        self.video_info[vid].type   = type
-
-
-    def analyzeLine(self, line):
-        content = line.strip("\n").split("\t")
-        vid     = content[0]
-        type    = content[2]
-        duration = content[6]
-        title   = content[7]
-        return vid, title, duration, type
+        self.num_of_video   = 0
+        self.video_info     = {}
+        self.mean_pop       = []
 
 
     def loadInfo(self, file):
@@ -58,8 +64,17 @@ class AllVideoInfo():
                 vid \t totalview \t type \t year \t month \t day \t duration \t title \n
         """
         for line in file:
-            vid, title, duration, type = self.analyzeLine(line)
-            self.Info(vid, title, duration, type)
+            content = line.strip("\n").split("\t")
+            vid     = content[0]
+            type    = content[2]
+            duration= content[6]
+            title   = content[7]
+            
+            self.num_of_video += 1
+            self.video_info[vid]            = OneVideoInfo(vid)
+            self.video_info[vid].title      = title
+            self.video_info[vid].duration   = duration
+            self.video_info[vid].type       = type
         file.close()
 
 
@@ -68,7 +83,7 @@ class AllVideoInfo():
             load popularity
             if vid not in file, del AllVideoInfo[vid]
             
-            the file is as follows:
+            the format of file is as follows:
                 vid1 \t day1 \t day2 ... dayN \n
                 vid2 ...
         """
@@ -118,8 +133,29 @@ class AllVideoInfo():
 
 
     def addVideo(self, info):
+        """
+            add a video into data set
+        """
         self.num_of_video += 1
         self.video_info[info.vid] = info
+
+
+    def namedEntityCounter(self):
+        segmentor = Segmentor()
+        postagger = Postagger()
+        recognizer = NamedEntityRecognizer()
+        segmentor.load('/Users/ainingwang/Documents/popularity/ltp_data/cws.model')
+        postagger.load('/Users/ainingwang/Documents/popularity/ltp_data/pos.model')
+        recognizer.load('/Users/ainingwang/Documents/popularity/ltp_data/ner.model')
+        
+        for vid in self.video_info:
+            if self.video_info[vid].type == "新闻":
+                self.video_info[vid].namedEntityCounter(segmentor, postagger, recognizer)
+        #print str(self.video_info[vid].title_named_entity) + "\t" + str(sum(self.video_info[vid].pop[:5])) + "\t" + self.video_info[vid].title
+
+        segmentor.release()
+        postagger.release()
+        recognizer.release()
 
 
 
@@ -133,5 +169,6 @@ if __name__ == '__main__':
     all.typeCount()
     all.meanPop()
     print all.mean_pop
+    all.namedEntityCounter()
 
 
